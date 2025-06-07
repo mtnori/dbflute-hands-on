@@ -1,0 +1,14 @@
+
+* * * * * * * * * *
+*                 *
+* Tsv Data Result *
+*                 *
+* * * * * * * * * *
+data-directory: playsql/data/common/tsv/UTF-8
+
+acyclic_01_01-MEMBER_STATUS.tsv (3)
+acyclic_01_02-PRODUCT_CATEGORY.tsv (5)
+acyclic_01_03-PRODUCT_STATUS.tsv (3)
+acyclic_01_04-REGION.tsv (4)
+acyclic_01_05-SERVICE_RANK.tsv (5)
+acyclic_01_06-WITHDRAWAL_REASON.tsv (4)

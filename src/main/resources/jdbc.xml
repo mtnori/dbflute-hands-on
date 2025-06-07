@@ -6,7 +6,7 @@
 
 	<component name="xaDataSource" class="org.lastaflute.jta.dbcp.SimpleXADataSource">
 		<property name="driverClassName">
-			"com.mysql.jdbc.Driver"
+			"com.mysql.cj.jdbc.Driver"
 		</property>
 		<property name="URL">
 			"jdbc:mysql://localhost:43376/maihamadb?allowPublicKeyRetrieval=true&amp;sslMode=DISABLED"

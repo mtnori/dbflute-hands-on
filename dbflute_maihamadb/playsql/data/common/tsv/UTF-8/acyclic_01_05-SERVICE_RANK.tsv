@@ -1,0 +1,6 @@
+"SERVICE_RANK_CODE"	"SERVICE_RANK_NAME"	"SERVICE_POINT_INCIDENCE"	"NEW_ACCEPTABLE_FLG"	"DESCRIPTION"	"DISPLAY_ORDER"
+"BRZ"	"BRONZE"	"2.000"	"1"	"bronze rank"	"4"
+"GLD"	"GOLD"	"9.200"	"1"	"gold rank"	"2"
+"PLS"	"PLASTIC"	"0.100"	"0"	"plastic rank"	"5"
+"PLT"	"PLATINUM"	"12.300"	"1"	"platinum rank"	"1"
+"SIL"	"SILVER"	"6.740"	"1"	"silver rank"	"3"

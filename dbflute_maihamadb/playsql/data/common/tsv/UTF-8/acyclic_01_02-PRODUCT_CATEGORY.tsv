@@ -1,0 +1,6 @@
+"PRODUCT_CATEGORY_CODE"	"PRODUCT_CATEGORY_NAME"	"PARENT_CATEGORY_CODE"
+"FOD"	"食品"	""
+"MSC"	"音楽"	""
+"HEB"	"ハーブ"	"FOD"
+"INS"	"楽器"	"MSC"
+"MCD"	"音楽CD"	"MSC"
