@@ -1,0 +1,203 @@
+package org.docksidestage.handson.unit;
+
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.dbflute.cbean.result.ListResultBean;
+import org.docksidestage.handson.dbflute.exbhv.MemberBhv;
+import org.docksidestage.handson.dbflute.exbhv.MemberSecurityBhv;
+import org.docksidestage.handson.dbflute.exentity.Member;
+import org.docksidestage.handson.dbflute.exentity.MemberSecurity;
+
+public class HandsOn03Test extends UnitContainerTestCase {
+
+    @Resource
+    MemberBhv memberBhv;
+
+    @Resource
+    MemberSecurityBhv memberSecurityBhv;
+
+    public void test_startAtSAndLessThan19680101() throws Exception {
+        // ## Arrange ##
+        String targetPrefix = "S";
+        LocalDate targetBirthdate = LocalDate.of(1968, 1, 1);
+
+        // ## Act ##
+        ListResultBean<Member> memberList = memberBhv.selectList(cb -> {
+            cb.query().setMemberName_LikeSearch(targetPrefix, op -> op.likePrefix());
+            cb.query().setBirthdate_LessEqual(targetBirthdate);
+            cb.query().addOrderBy_Birthdate_Asc();
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(memberList);
+        memberList.forEach(member -> {
+            LocalDate memberBirthdate = member.getBirthdate();
+            log(member.getMemberName(), memberBirthdate);
+            assertTrue(memberBirthdate.isBefore(targetBirthdate) | memberBirthdate.isEqual(targetBirthdate));
+        });
+    }
+
+    public void test_memberStatusAndSecurityInfo() throws Exception {
+        // ## Arrange ##
+
+        // ## Act ##
+        ListResultBean<Member> memberList = memberBhv.selectList(cb -> {
+            cb.setupSelect_MemberStatus();
+            cb.setupSelect_MemberSecurityAsOne();
+            cb.query().addOrderBy_Birthdate_Desc();
+            cb.query().addOrderBy_MemberId_Asc();
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(memberList);
+        memberList.forEach(member -> {
+            log(member.getMemberName(),member.getMemberStatus(),member.getMemberSecurityAsOne());
+            assertTrue(member.getMemberStatus().isPresent());
+            assertTrue(member.getMemberSecurityAsOne().isPresent());
+        });
+    }
+
+    public void test_remind() throws Exception {
+        // ## Arrange ##
+        String keyword = "2";
+
+        // ## Act ##
+        // テスト都合でパフォーマンス劣化されないように、会員セキュリティ情報のデータは取得しない
+        ListResultBean<Member> memberList = memberBhv.selectList(cb -> {
+            cb.query().queryMemberSecurityAsOne().setReminderQuestion_LikeSearch(keyword, opt -> opt.likeContain());
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(memberList);
+
+        memberList.forEach(member -> {
+            // NOTE: 複数回検索しているのがあまりよくない
+            memberSecurityBhv.selectByPK(member.getMemberId()).alwaysPresent(security -> {
+                String question = security.getReminderQuestion();
+                log(member.getMemberName(), question);
+                assertTrue(question.contains(keyword));
+            });
+        });
+
+        // SQL を救出パターン
+        ListResultBean<MemberSecurity> securityList = memberSecurityBhv.selectList(cb -> {
+            cb.query().setMemberId_InScope(memberBhv.extractMemberIdList(memberList));
+        });
+        memberList.forEach(member -> {
+            securityList.forEach(security -> {
+                if (member.getMemberId().equals(security.getMemberId())) {
+                    String question = security.getReminderQuestion();
+                    log(member.getMemberName(), question);
+                    assertTrue(question.contains(keyword));
+                    markHere("exists");
+                    // break できない！
+                }
+            });
+            assertMarked("exists");
+        });
+
+        // stream() で探す
+        memberList.forEach(member -> {
+            securityList.stream().filter(security -> {
+               return member.getMemberId().equals(security.getMemberId());
+            }).findFirst().ifPresent(security -> {
+                String question = security.getReminderQuestion();
+                log(member.getMemberName(), question);
+                assertTrue(question.contains(keyword));
+                markHere("exists");
+            });
+            assertMarked("exists");
+        });
+
+        // Map にする
+        Map<Integer, MemberSecurity> securityMap = securityList.stream().collect(
+                Collectors.toMap(security -> security.getMemberId(), bean -> bean));
+        memberList.forEach(member -> {
+            MemberSecurity security = securityMap.get(member.getMemberId());
+            String question = security.getReminderQuestion();
+            log(member.getMemberName(), question);
+            assertTrue(question.contains(keyword));
+        });
+    }
+
+    public void test_4() throws Exception {
+        // ## Arrange ##
+
+        // ## Act ##
+        ListResultBean<Member> memberList = memberBhv.selectList(cb -> {
+            cb.query().queryMemberStatus().addOrderBy_DisplayOrder_Asc();
+            cb.query().addOrderBy_MemberId_Asc();
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(memberList);
+
+        // Lambda 式の制約で、外部の変数を参照する場合はその変数が final である必要がある
+        // 配列への参照は final のためこの制約を回避するために使用するイディオム
+        String[] previousBox = new String[1];
+        Set<String> statusSet = new HashSet<>();
+
+        memberList.forEach(member -> {
+            // 会員ステータスのデータが取れていないこと
+            assertFalse(member.getMemberStatus().isPresent());
+
+            String previous = previousBox[0];
+            String current = member.getMemberStatusCode();
+
+            log(previous, current);
+
+            // ステータスが切り替わった際に判定する
+            // ステータス Set に今回のステータスがまだ含まれていないこと
+            if (previous != null && !previous.equals(current)) {
+                assertFalse(statusSet.contains(current));
+            }
+
+            previousBox[0] = current;
+            statusSet.add(current);
+        });
+
+        // 普通の For ループパターン
+        // 再利用
+        statusSet.clear();
+        String previous = null;
+        for (Member member : memberList) {
+            assertFalse(member.getMemberStatus().isPresent());
+
+            String current = member.getMemberStatusCode();
+            log(previous, current);
+
+            if (previous != null && !previous.equals(current)) {
+                assertFalse(statusSet.contains(current));
+            }
+            statusSet.add(current);
+            previous = current;
+        }
+
+        // 別のパターン
+        statusSet.clear();
+        previous = null;
+
+        int switchCount = 0;
+        for (Member member : memberList) {
+            assertFalse(member.getMemberStatus().isPresent());
+            String current = member.getMemberStatusCode();
+            log(previous, current);
+
+            // 切り替えタイミングで switchCount をインクリメントする
+            if (previous != null && !previous.equals(current)) {
+                ++switchCount;
+            }
+
+            statusSet.add(current);
+            previous = current;
+        }
+        assertEquals(statusSet.size() - 1, switchCount);
+
+    }
+}
