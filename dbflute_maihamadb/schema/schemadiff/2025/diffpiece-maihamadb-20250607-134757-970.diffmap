@@ -1,0 +1,73 @@
+map:{
+    ; 2025/06/07 13:47:57.970 = map:{
+        ; diffDate = 2025/06/07 13:47:57.970
+        ; tableCount = map:{
+            ; next = 15
+            ; previous = 0
+        }
+        ; diffAuthor = noriyukimotoyoshi
+        ; diffGitBranch = master
+        ; tableDiff = map:{
+            ; member = map:{
+                ; tableName = member
+                ; diffType = ADD
+            }
+            ; member_address = map:{
+                ; tableName = member_address
+                ; diffType = ADD
+            }
+            ; member_login = map:{
+                ; tableName = member_login
+                ; diffType = ADD
+            }
+            ; member_security = map:{
+                ; tableName = member_security
+                ; diffType = ADD
+            }
+            ; member_service = map:{
+                ; tableName = member_service
+                ; diffType = ADD
+            }
+            ; member_status = map:{
+                ; tableName = member_status
+                ; diffType = ADD
+            }
+            ; member_withdrawal = map:{
+                ; tableName = member_withdrawal
+                ; diffType = ADD
+            }
+            ; product = map:{
+                ; tableName = product
+                ; diffType = ADD
+            }
+            ; product_category = map:{
+                ; tableName = product_category
+                ; diffType = ADD
+            }
+            ; product_status = map:{
+                ; tableName = product_status
+                ; diffType = ADD
+            }
+            ; purchase = map:{
+                ; tableName = purchase
+                ; diffType = ADD
+            }
+            ; purchase_payment = map:{
+                ; tableName = purchase_payment
+                ; diffType = ADD
+            }
+            ; region = map:{
+                ; tableName = region
+                ; diffType = ADD
+            }
+            ; service_rank = map:{
+                ; tableName = service_rank
+                ; diffType = ADD
+            }
+            ; withdrawal_reason = map:{
+                ; tableName = withdrawal_reason
+                ; diffType = ADD
+            }
+        }
+    }
+}
