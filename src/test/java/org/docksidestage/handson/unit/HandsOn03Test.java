@@ -446,4 +446,39 @@ public class HandsOn03Test extends UnitContainerTestCase {
         // 後ろのページがあることをアサート
         assertTrue(page.existsNextPage());
     }
+
+    public void test_cursor() throws Exception {
+        // ## Arrange ##
+
+        String[] previousBox = new String[1];
+        Set<String> statusSet = new HashSet<>();
+
+        // ## Act ##
+        memberBhv.selectCursor(cb -> {
+            cb.setupSelect_MemberStatus();
+            cb.query().queryMemberStatus().addOrderBy_DisplayOrder_Asc();
+            cb.query().addOrderBy_MemberId_Asc();
+        }, member -> {
+            // ## Assert ##
+
+            // 会員ステータスが取れていることをアサート
+            assertTrue(member.getMemberStatus().isPresent());
+
+            // 会員ステータスごとに固まって並んでいることをアサート
+            String previous = previousBox[0];
+            String current = member.getMemberStatusCode();
+            log(previous, current);
+
+            // 前回のステータスコードと異なる場合に、現在のステータスコードがすでにSetに入っていないことをアサートする
+            if (previous != null && !previous.equals(current)) {
+                assertFalse(statusSet.contains(current));
+            }
+
+            // 現在のデータを配列に一時保持
+            previousBox[0] = current;
+            // 現在のステータスをSetにセット
+            statusSet.add(current);
+        });
+        assertHasAnyElement(statusSet);
+    }
 }
