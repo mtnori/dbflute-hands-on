@@ -274,4 +274,97 @@ public class HandsOn03Test extends UnitContainerTestCase {
             assertTrue(addedToDate.isAfter(formalizedDatetime));
         });
     }
+
+    public void test_7() throws Exception {
+        // ## Arrange ##
+        adjustPurchase_PurchaseDatetime_fromFormalizedDatetimeInWeek();
+
+        // ## Act ##
+        ListResultBean<Purchase> purchaseList = purchaseBhv.selectList(cb -> {
+            cb.setupSelect_Member().withMemberStatus();
+            cb.setupSelect_Member().withMemberSecurityAsOne();
+            cb.setupSelect_Product().withProductStatus();
+            cb.setupSelect_Product().withProductCategory().withProductCategorySelf();
+
+            cb.columnQuery(colCB -> colCB.specify().columnPurchaseDatetime())
+                    .greaterEqual(colCB -> colCB.specify().specifyMember().columnFormalizedDatetime());
+            cb.columnQuery(colCB -> colCB.specify().columnPurchaseDatetime())
+                    .lessThan(colCB -> colCB.specify().specifyMember().columnFormalizedDatetime())
+                    .convert(op -> op.truncTime().addDay(8));
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(purchaseList);
+
+        for(Purchase purchase : purchaseList) {
+            Product product = purchase.getProduct().get();
+            product.getProductCategory().get().getProductCategorySelf().alwaysPresent(parent -> {
+                assertNotNull(parent.getProductCategoryName());
+            });
+
+            LocalDateTime purchaseDatetime = purchase.getPurchaseDatetime();
+            LocalDateTime formalizedDatetime = purchase.getMember().get().getFormalizedDatetime();
+            LocalDateTime oneWeekAfter = new HandyDate(formalizedDatetime).moveToDayJust().addDay(8).getLocalDateTime();
+
+            log("purchaseDatetime={}, formalizedDatetime={}, {}", purchaseDatetime, formalizedDatetime, product.getProductName());
+            assertTrue(purchaseDatetime.isEqual(formalizedDatetime) || purchaseDatetime.isAfter(formalizedDatetime));
+            assertTrue(purchaseDatetime.isBefore(oneWeekAfter));
+        }
+    }
+
+    public void test_8() throws Exception {
+        // ## Arrange ##
+        String targetDateStr = "1974/01/01";
+        LocalDate targetDate = new HandyDate(targetDateStr).getLocalDate();
+
+        LocalDate limitDate = adjustExercise8_Birthdate_asLimitDate(targetDate);
+        LocalDate overDate = adjustExercise8_Birthdate_asOverDate(targetDate);
+
+        // ## Act ##
+        ListResultBean<Member> memberList = memberBhv.selectList(cb -> {
+            cb.setupSelect_MemberStatus();
+            cb.setupSelect_MemberSecurityAsOne();
+            cb.setupSelect_MemberWithdrawalAsOne();
+            cb.query().setBirthdate_FromTo(null, targetDate, op -> op.compareAsYear().allowOneSide().orIsNull());
+            cb.query().addOrderBy_Birthdate_Desc().withNullsFirst();;
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(memberList);
+        boolean existsLimitDate = false;
+        for (Member member : memberList) {
+            MemberStatus status = member.getMemberStatus().get();
+            MemberSecurity security = member.getMemberSecurityAsOne().get();
+            String reason = member.getMemberWithdrawalAsOne().map(wdl -> wdl.getWithdrawalReasonInputText()).orElse("none");
+            log(status.getMemberStatusName(), security.getReminderQuestion(), security.getReminderAnswer(), reason);
+
+            LocalDate birthdate = member.getBirthdate();
+            if (birthdate != null) {
+                assertTrue(birthdate.isBefore(overDate));
+                if (birthdate.isEqual(limitDate)) {
+                    existsLimitDate = true;
+                }
+            }
+        }
+        assertTrue(existsLimitDate);
+        assertNull(memberList.get(0).getBirthdate()); // 先頭なのでこれでOK
+    }
+
+    private LocalDate adjustExercise8_Birthdate_asLimitDate(LocalDate targetDate) {
+        LocalDate limitDate = new HandyDate(targetDate).moveToYearTerminal().getLocalDate();
+        Member member = new Member();
+        member.setMemberId(3);
+        member.setBirthdate(limitDate);
+        memberBhv.updateNonstrict(member);
+        return limitDate;
+    }
+
+    private LocalDate adjustExercise8_Birthdate_asOverDate(LocalDate targetDate) {
+        LocalDate overDate = targetDate.plusYears(1);
+        Member member = new Member();
+        member.setMemberId(5);
+        member.setBirthdate(overDate);
+        memberBhv.updateNonstrict(member);
+        return overDate;
+    }
 }
