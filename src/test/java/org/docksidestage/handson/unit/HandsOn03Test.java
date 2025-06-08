@@ -2,15 +2,13 @@ package org.docksidestage.handson.unit;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
 import org.dbflute.cbean.result.ListResultBean;
+import org.dbflute.cbean.result.PagingResultBean;
 import org.dbflute.exception.NonSpecifiedColumnAccessException;
 import org.dbflute.helper.HandyDate;
 import org.docksidestage.handson.dbflute.exbhv.MemberBhv;
@@ -417,5 +415,35 @@ public class HandsOn03Test extends UnitContainerTestCase {
 
         assertTrue(existsTargetMonth);
         assertTrue(passedBorder);
+    }
+
+    public void test_paging() throws Exception {
+        // ## Arrange ##
+
+        // ## Act ##
+        PagingResultBean<Member> page = memberBhv.selectPage(cb -> {
+            cb.setupSelect_MemberStatus();
+            cb.specify().specifyMemberStatus().columnMemberStatusName();
+            cb.query().addOrderBy_MemberId_Asc();
+            cb.paging(3,1);
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(page);
+        page.forEach(member -> {
+            log(member.getMemberId(),member.getMemberName(),member.getMemberStatus().get().getMemberStatusName());
+        });
+        int allRecordCount = page.getAllRecordCount();
+        assertEquals(memberBhv.selectCount(cb -> {}), allRecordCount);
+        assertEquals((allRecordCount / 3) + (allRecordCount % 3 > 0 ? 1 : 0), page.getAllPageCount());
+        assertEquals(3, page.getPageSize());
+        assertEquals(1, page.getCurrentPageNumber());
+        assertEquals(3, page.size());
+        // 前後3ページ分のリストを表示をアサート
+        assertEquals(Arrays.asList(1, 2, 3, 4), page.pageRange(op -> op.rangeSize(3)).createPageNumberList());
+        // 前のページがないことをアサート
+        assertFalse(page.existsPreviousPage());
+        // 後ろのページがあることをアサート
+        assertTrue(page.existsNextPage());
     }
 }
