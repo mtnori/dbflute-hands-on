@@ -367,4 +367,55 @@ public class HandsOn03Test extends UnitContainerTestCase {
         memberBhv.updateNonstrict(member);
         return overDate;
     }
+
+    public void test_9() throws Exception {
+        // ## Arrange ##
+        String targetDateStr = "2005/06/01";
+        LocalDate targetDate = new HandyDate(targetDateStr).getLocalDate();
+
+        // ## Act ##
+        ListResultBean<Member> memberList = memberBhv.selectList(cb -> {
+            // 生年月日がないこと
+            cb.query().setBirthdate_IsNull();
+            // 正式会員になった日付で照準ソートし、さらに 2005/06 に正式会員になった会員を先に並べる
+            cb.query().addOrderBy_FormalizedDatetime_Asc().withManualOrder(op -> {
+                op.when_FromTo(targetDate, targetDate, ftOp -> ftOp.compareAsMonth());
+            });
+            // 第二ソートキーとして、会員IDの降順
+            cb.query().addOrderBy_MemberId_Desc();
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(memberList);
+
+        // 対象年月が存在すること
+        boolean existsTargetMonth = false;
+        // 対象年月の境界を超えたかどうか
+        boolean passedBorder = false;
+
+        HandyDate fromHandy = new HandyDate(targetDate);
+        for (Member member : memberList) {
+            log(member.getFormalizedDatetime());
+
+            // 誕生日がNullであること
+            assertNull(member.getBirthdate());
+
+            // 2025/06 に正式会員になった会員が先に並んでいること
+            LocalDateTime formalizedDateTime = member.getFormalizedDatetime();
+
+            // 対象年月の塊を2回通った、あるいは対象年月が先頭でない場合、その後の繰り返しで assertFalse のロジックを通り、失敗するため検知できる
+            if (formalizedDateTime != null && fromHandy.isMonthOfYearSameAs(formalizedDateTime)) {
+                // 対象年月の境界を超えていないことをチェック
+                assertFalse(passedBorder);
+                // 対象年月のデータが存在していることを確認できたのでtrueにする
+                existsTargetMonth = true;
+            } else {
+                // 対象年月でなければtrueにする
+                passedBorder = true;
+            }
+        }
+
+        assertTrue(existsTargetMonth);
+        assertTrue(passedBorder);
+    }
 }
