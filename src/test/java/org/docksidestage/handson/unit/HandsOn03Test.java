@@ -481,4 +481,28 @@ public class HandsOn03Test extends UnitContainerTestCase {
         });
         assertHasAnyElement(statusSet);
     }
+
+    // InnerJoinAutoDetectは、手動の (Manual)InnerJoin とは別に、InnerJoin 可能な結合、
+    // つまり外部結合である必要のない外部結合を自動判別する機能
+    // @see https://dbflute.seasar.org/ja/data/model/maihamadb-erd.png
+    public void test_confirm_InnerJoinAutoDetect() throws Exception {
+        // ## Arrange ##
+
+        // ## Act ##
+        memberBhv.selectList(cb -> {
+            // Not NullのカラムでFK制約のあるリレーションを内部結合にする
+            // 相手側のデータは必ず存在する
+            cb.setupSelect_MemberStatus();
+
+            // 通常は外部結合
+            cb.setupSelect_MemberSecurityAsOne();
+
+            // Where 句で絞り込み条件として利用されているリレーションを内部結合にする
+            // (一部例外を除き) 相手側のデータは必ず存在する
+            cb.setupSelect_MemberWithdrawalAsOne();
+            cb.query().queryMemberWithdrawalAsOne().setWithdrawalDatetime_GreaterEqual(currentLocalDateTime());
+        });
+
+        // ## Assert ##
+    }
 }
