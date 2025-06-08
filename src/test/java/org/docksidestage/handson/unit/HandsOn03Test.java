@@ -1,7 +1,9 @@
 package org.docksidestage.handson.unit;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -9,10 +11,12 @@ import java.util.stream.Collectors;
 import javax.annotation.Resource;
 
 import org.dbflute.cbean.result.ListResultBean;
+import org.dbflute.exception.NonSpecifiedColumnAccessException;
+import org.dbflute.helper.HandyDate;
 import org.docksidestage.handson.dbflute.exbhv.MemberBhv;
 import org.docksidestage.handson.dbflute.exbhv.MemberSecurityBhv;
-import org.docksidestage.handson.dbflute.exentity.Member;
-import org.docksidestage.handson.dbflute.exentity.MemberSecurity;
+import org.docksidestage.handson.dbflute.exbhv.PurchaseBhv;
+import org.docksidestage.handson.dbflute.exentity.*;
 
 public class HandsOn03Test extends UnitContainerTestCase {
 
@@ -21,6 +25,9 @@ public class HandsOn03Test extends UnitContainerTestCase {
 
     @Resource
     MemberSecurityBhv memberSecurityBhv;
+
+    @Resource
+    PurchaseBhv purchaseBhv;
 
     public void test_startAtSAndLessThan19680101() throws Exception {
         // ## Arrange ##
@@ -199,5 +206,72 @@ public class HandsOn03Test extends UnitContainerTestCase {
         }
         assertEquals(statusSet.size() - 1, switchCount);
 
+    }
+
+    public void test_5() throws Exception {
+        // ## Arrange ##
+
+        // ## Act ##
+        ListResultBean<Purchase> purchaseList =  purchaseBhv.selectList(cb -> {
+           cb.setupSelect_Member().withMemberStatus();
+           cb.setupSelect_Product();
+           cb.query().queryMember().setBirthdate_IsNotNull();
+
+           cb.query().addOrderBy_PurchaseDatetime_Desc();
+           cb.query().addOrderBy_PurchasePrice_Desc();
+           cb.query().addOrderBy_ProductId_Asc();
+           cb.query().addOrderBy_MemberId_Asc();
+        });
+
+        // ## Assert ##
+        assertHasAnyElement(purchaseList);
+
+        purchaseList.forEach(purchase -> {
+            Member member = purchase.getMember().get();
+            MemberStatus status = member.getMemberStatus().get();
+            Product product = purchase.getProduct().get();
+            log(purchase.getProductId(), member.getMemberName(), status.getMemberStatusName(), product.getProductName(), member.getMemberId());
+            assertNotNull(member.getBirthdate());
+        });
+    }
+
+    public void test_6() throws Exception {
+        // ## Arrange ##
+        String fromDateStr = "2005/10/01";
+        String toDateStr = "2005/10/03";
+
+        LocalDateTime fromDate = new HandyDate(fromDateStr).getLocalDateTime();
+        LocalDateTime toDate = new HandyDate(toDateStr).getLocalDateTime();
+
+        String targetMemberName = "vi";
+
+        // 10月1日ジャスト(時分秒なし)の正式会員日時を持つ会員データを作成(更新)
+        adjustMember_FormalizedDatetime_FirstOnly(fromDate, targetMemberName);
+
+        // ## Act ##
+        ListResultBean<Member> memberList = memberBhv.selectList(cb -> {
+            cb.setupSelect_MemberStatus();
+            cb.specify().specifyMemberStatus().columnMemberStatusName();
+            cb.query().setMemberName_LikeSearch(targetMemberName, op -> op.likeContain());
+            cb.query().setFormalizedDatetime_FromTo(fromDate, toDate, op -> op.compareAsDate());
+        });
+
+        // ## Assert ##
+        memberList.forEach(member -> {
+            LocalDateTime formalizedDatetime = member.getFormalizedDatetime();
+            MemberStatus status = member.getMemberStatus().get();
+            LocalDateTime addedToDate = toDate.plusDays(1);
+
+            log(member.getMemberName(), formalizedDatetime, status.getMemberStatusName());
+
+            assertNotNull(status.getMemberStatusCode());
+            assertNotNull(status.getMemberStatusName());
+
+            assertException(NonSpecifiedColumnAccessException.class, () -> status.getDisplayOrder());
+            assertException(NonSpecifiedColumnAccessException.class, () -> status.getDescription());
+
+            assertTrue(fromDate.isEqual(formalizedDatetime) || fromDate.isBefore(formalizedDatetime));
+            assertTrue(addedToDate.isAfter(formalizedDatetime));
+        });
     }
 }
